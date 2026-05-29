@@ -1,10 +1,8 @@
 # SetupDevice.py
-from openrazer.client import devices
 from openrazer.client.devices import RazerDevice
-
-from src.components.Effects import apply_matrix_effects
 from src.components.UserConfigRetriever import get_user_config
 from src.models.ConfigModels import DeviceConfig, UserConfig
+from src.components.Effects import apply_matrix_effects
 
 
 

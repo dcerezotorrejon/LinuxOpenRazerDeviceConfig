@@ -20,7 +20,7 @@ from src.components.SetupDevice import setup_device
 
 
 #Constantes
-POLLING_INTERVAL = 5  # Intervalo de tiempo para hacer pooling de dispositivos (en segundos)
+POLLING_INTERVAL = 3  # Intervalo de tiempo para hacer pooling de dispositivos (en segundos)
 ALLOWED_DEVICE_TYPES = set(['keyboard', 'mouse'])  # Tipos de dispositivos a configurar
 
 
@@ -72,6 +72,7 @@ def cleanupDevices(devices: list[RazerDevice]):
     if cleaned:
         print('Reiniciando openrazer daemon para refrescar la lista de dispositivos...')
         subprocess.run(['systemctl', '--user', 'restart', 'openrazer-daemon'], check=True)
+        stop_event.wait(2)  # Detener el script para reiniciarlo manualmente después de limpiar los dispositivos
         cleaned = False
 
 

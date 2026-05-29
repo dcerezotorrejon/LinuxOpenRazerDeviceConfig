@@ -1,9 +1,9 @@
-# Effects.py
 from openrazer.client.devices import RazerDevice
 
-def apply_matrix_effects(device: RazerDevice, user_config: dict):
+from models.ConfigModels import DeviceConfig
+
+def apply_matrix_effects(device: RazerDevice, config: DeviceConfig | None):
     try:
-        config = user_config
         if config is None:
             return
 
