@@ -4,41 +4,31 @@
 # Se encargará de hacer pooling de los dispositivos y aplicar efectos automáticamente al detectar un nuevo dispositivo compatible
 
 # Imports
-import subprocess  
-import importlib.util
+import subprocess
 import openrazer.client
-import time
+import sys
+import threading
 from pathlib import Path
 # Cambia esto en tu línea 11
 from openrazer.client.devices import RazerDevice
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.components.SetupDevice import setup_device
 
-def _load_keyboard_setup():
-    module_path = Path(__file__).with_name("KeyboardSetup.py")
-    spec = importlib.util.spec_from_file_location("KeyboardSetup", module_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"No se pudo cargar el módulo desde {module_path}")
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.setup
-
-
-setup_keyboard = _load_keyboard_setup()
 
 #Constantes
 POLLING_INTERVAL = 5  # Intervalo de tiempo para hacer pooling de dispositivos (en segundos)
 ALLOWED_DEVICE_TYPES = set(['keyboard', 'mouse'])  # Tipos de dispositivos a configurar
-SETUP_FUNCTION_MAP = {
-    'keyboard': setup_keyboard,
-    # 'mouse': setup_mouse,  # Si se desea agregar soporte para mouse, se puede definir una función similar a setup_keyboard y agregarla aquí
-}
+
 
 
 #Variables comunes
 
 setupDevices = set[str]()
+stop_event = threading.Event()
 
 # Función para inicializar el DeviceManager y obtener los dispositivos compatibles
 # El pooling se hace de forma constante par detectar nuevos dispositivos que se conecten después de iniciar el script
@@ -89,28 +79,28 @@ def setupDevice(device: RazerDevice):
     if device._pid in setupDevices:
         #print(f"El dispositivo {device.name} con PID {device._pid} ya está configurado, omitiendo...")
         return
-    print(f"Configurando {device.type} con nombre {device.name} y PID {device._pid}...")
-    setup_function = SETUP_FUNCTION_MAP.get(device.type) or (lambda x: None)
-    try:
-        setup_function(device)
-        setupDevices.add(int(device._pid))
-    except Exception as e:
-        print(f"Error al configurar el dispositivo {device.name} con PID {device._pid}: {e}")
-        
-        return
+    print(f"Configurando dispositivo {device.name} con PID {device._pid}...")
+    setup_device(device)   
+    setupDevices.add(device._pid) 
+    return
     
 
 
 def main():
-    while True:
-        devices = pollDevices()
-        # Eliminar dispositivos que ya no están conectados
-        cleanupDevices(devices)
-        for device in devices:
-            setupDevice(device)
-        time.sleep(POLLING_INTERVAL)
-                    
-                    
+    try:
+        while True:
+            devices = pollDevices()
+            # Eliminar dispositivos que ya no están conectados
+            cleanupDevices(devices)
+            for device in devices:
+                setupDevice(device)
+            stop_event.wait(POLLING_INTERVAL)
+    except KeyboardInterrupt:
+        print("Deteniendo el script...")
+        stop_event.set()
+    except Exception as e:
+        print(f"Error inesperado: {e}")
+        stop_event.set()                
 main()
 
 
