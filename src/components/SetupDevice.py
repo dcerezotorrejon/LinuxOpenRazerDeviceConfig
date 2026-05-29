@@ -2,7 +2,7 @@
 from openrazer.client.devices import RazerDevice
 from src.components.UserConfigRetriever import get_user_config
 from src.models.ConfigModels import DeviceConfig, UserConfig
-from src.components.Effects import apply_matrix_effects
+from src.components.Effects import apply_matrix_effects, cleanup_effects
 
 
 
@@ -29,4 +29,10 @@ def setup_device(device: RazerDevice):
         print(f"Error al configurar el dispositivo {device.name} con PID {device._pid}: {e}")
 
 
+
+def unload_device(device: RazerDevice):
+    try:
+        cleanup_effects(device)
+    except Exception as e:
+        print(f"Error al limpiar efectos del dispositivo {device.name} durante la descarga: {e}")
       
