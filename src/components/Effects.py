@@ -1,0 +1,31 @@
+# Effects.py
+from openrazer.client.devices import RazerDevice
+
+def apply_matrix_effects(device: RazerDevice, user_config: dict):
+    try:
+        config = user_config
+        if config is None:
+            return
+
+        if device.capabilities.get('lighting_led_matrix') is not True:
+            return 
+        
+        rows = device.fx.advanced.matrix._rows
+        cols = device.fx.advanced.matrix._cols
+
+        default_color = config.get("default_color", [0, 0, 0]);
+        custom_keys = config.get("custom_keys", dict()) 
+
+
+        for r in range(rows):
+            for c in range(cols):
+                custom_config = custom_keys.get(str(r), {}).get(str(c), None)
+                current_color = custom_config["color"] if custom_config is not None else default_color
+                device.fx.advanced.matrix.set(r, c, tuple(current_color))
+            
+   
+
+        device.fx.advanced.draw()
+    except Exception as e:
+        print(f"Error al aplicar efectos al dispositivo {device.name}")
+        print(f"Detalles del error: \n {e}")
