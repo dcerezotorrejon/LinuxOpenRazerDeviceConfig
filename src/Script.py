@@ -8,6 +8,7 @@ import subprocess
 import openrazer.client
 import sys
 import threading
+import signal
 from pathlib import Path
 # Cambia esto en tu línea 11
 from openrazer.client.devices import RazerDevice
@@ -16,7 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.components.SetupDevice import setup_device
+from src.components.SetupDevice import setup_device, unload_device
 
 
 #Constantes
@@ -27,8 +28,10 @@ ALLOWED_DEVICE_TYPES = set(['keyboard', 'mouse'])  # Tipos de dispositivos a con
 
 #Variables comunes
 
-setupDevices = set[str]()
+setupDevices = dict[str, RazerDevice]()
 stop_event = threading.Event()
+
+
 
 # Función para inicializar el DeviceManager y obtener los dispositivos compatibles
 # El pooling se hace de forma constante par detectar nuevos dispositivos que se conecten después de iniciar el script
@@ -64,7 +67,7 @@ def cleanupDevices(devices: list[RazerDevice]):
     for pid in list(setupDevices):
         if pid not in [d._pid for d in devices]:
             print(f"El dispositivo con PID {pid} ya no está conectado, eliminando de la configuración...")
-            setupDevices.clear()  # Limpiar la lista de dispositivos configurados para forzar reconfiguración al reconectar
+            del setupDevices[pid]  # Eliminar el dispositivo de la lista de configurados
             cleaned = True
             break  # Salir del bucle después de limpiar, no es necesario seguir verificando
            
@@ -82,14 +85,29 @@ def setupDevice(device: RazerDevice):
         return
     print(f"Configurando dispositivo {device.name} con PID {device._pid}...")
     setup_device(device)   
-    setupDevices.add(device._pid) 
+    setupDevices[device._pid] = device
     return
     
 
+def handleStopSignal(signum, frame):
+    signal_name = signal.Signals(signum).name
+    print(f"Recibida señal {signal_name}. Deteniendo el script...")
+    for device in setupDevices.values():
+        try:
+            unload_device(device)
+        except Exception as e:
+            print(f"Error al limpiar efectos del dispositivo {device.name} durante la detención: {e}")
+    stop_event.set()
+
 
 def main():
+    signal.signal(signal.SIGINT, handleStopSignal)
+    signal.signal(signal.SIGTERM, handleStopSignal)
+    signal.signal(signal.SIGHUP, handleStopSignal)
+    signal.signal(signal.SIGQUIT, handleStopSignal)
+
     try:
-        while True:
+        while not stop_event.is_set():
             devices = pollDevices()
             # Eliminar dispositivos que ya no están conectados
             cleanupDevices(devices)

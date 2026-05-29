@@ -29,3 +29,13 @@ def apply_matrix_effects(device: RazerDevice, config: DeviceConfig | None):
     except Exception as e:
         print(f"Error al aplicar efectos al dispositivo {device.name}")
         print(f"Detalles del error: \n {e}")
+
+def cleanup_effects(device: RazerDevice):
+    try:
+        if device.capabilities.get('lighting_led_matrix') is not True:
+            return 
+        
+        device.fx.none()
+    except Exception as e:
+        print(f"Error al limpiar efectos del dispositivo {device.name}")
+        print(f"Detalles del error: \n {e}")
