@@ -124,7 +124,6 @@ def handleSleepSignal(sleeping: bool):
             # El daemon de OpenRazer a veces pierde los dispositivos tras suspender
             reloadOpenRazerDaemon()
             print("OpenRazer daemon reiniciado tras reanudación.")
-            stop_event.wait(2)# Esperar un momento para que el daemon se reinicie completamente
         except Exception as e:
             print(f"Error al reiniciar openrazer-daemon tras reanudación: {e}")
         setupDevicesRegistry.clearRegistry()

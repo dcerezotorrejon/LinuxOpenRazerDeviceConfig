@@ -50,6 +50,11 @@
 "mouse": {
     "brightness": 100,
     "default_color": [255, 255, 255],
-    "custom_keys": {}
+    "custom_keys": {
+        "0": {
+           "0": {"color": [0, 0, 255], "key": "razer logo"},
+           "1": {"color": [0, 0, 255], "key": "scroll wheel"}         
+        }
+    }
 }
 }
