@@ -1,15 +1,15 @@
 # SetupDevice.py
 from openrazer.client.devices import RazerDevice
-from src.components.UserConfigRetriever import get_user_config
 from src.models.ConfigModels import DeviceConfig, UserConfig
-from src.components.Effects import apply_matrix_effects, cleanup_effects
+from src.components.Effects import EffectsManager
 
 
 class SetupDeviceManager:
     user_config: UserConfig | None
 
-    def __init__(self):
-        self.user_config = get_user_config()
+    def __init__(self, user_config: UserConfig | None, effects_manager: EffectsManager | None = None):
+        self.user_config = user_config
+        self.effects_manager = effects_manager or EffectsManager()
 
     def apply_base_settings(self, device: RazerDevice, config: DeviceConfig | None):
         if config is not None:
@@ -17,7 +17,7 @@ class SetupDeviceManager:
 
     def apply_settings(self, device: RazerDevice, config: DeviceConfig | None):
         self.apply_base_settings(device, config)
-        apply_matrix_effects(device, config)
+        self.effects_manager.apply_matrix_effects(device, config)
 
     def setup_device(self, device: RazerDevice):
         print(f"Configurando dispositivo {device.name} con PID {device._pid}...")
@@ -34,6 +34,6 @@ class SetupDeviceManager:
 
     def unload_device(self, device: RazerDevice):
         try:
-            cleanup_effects(device)
+            self.effects_manager.cleanup_effects(device)
         except Exception as e:
             print(f"Error al limpiar efectos del dispositivo {device.name} durante la descarga: {e}")
