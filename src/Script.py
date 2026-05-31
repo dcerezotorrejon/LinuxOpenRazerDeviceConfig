@@ -21,7 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from components.DeviceRegistry import DeviceRegistry
-from src.components.SetupDevice import setup_device, unload_device
+from src.components.SetupDevice import SetupDeviceManager
 
 
 #Constantes
@@ -33,6 +33,7 @@ ALLOWED_DEVICE_TYPES = set(['keyboard', 'mouse'])  # Tipos de dispositivos a con
 #Variables comunes
 
 setupDevicesRegistry = DeviceRegistry()
+setupDeviceManager = SetupDeviceManager()
 stop_event = threading.Event()
 
 
@@ -75,24 +76,26 @@ def cleanupDisconnectedDevices(devices: list[RazerDevice]):
            
     
     if cleaned:
-        reloadOpenRazerDaemon()  # Reiniciar el daemon para asegurarnos de que se liberen los recursos del dispositivo desconectado
+        reloadOpenRazerDaemon()  #, requerido para detectar los cambios por defecto de deteccion en alternancia Wireless/USB
         stop_event.wait(3)  # Detener el script para reiniciarlo manualmente después de limpiar los dispositivos
         cleaned = False
 
 
-def setupDevice(device: RazerDevice):
+def setupConnectedDevice(device: RazerDevice):
     if setupDevicesRegistry.isDeviceRegistered(device):
         #print(f"El dispositivo {device.name} con PID {device._pid} ya está configurado, omitiendo...")
         return
-    print(f"Configurando dispositivo {device.name} con PID {device._pid}...")
-    setup_device(device)   
-    setupDevicesRegistry.addDevice(device)
+    try:
+        setupDeviceManager.setupDevice(device)
+        setupDevicesRegistry.addDevice(device)
+    except Exception as e:
+        print(f"Error al configurar el dispositivo {device.name} con PID {device._pid}: {e}")
     return
     
 def clearDevices():
     for device in setupDevicesRegistry.getRegisteredDevices():
         try:
-            unload_device(device)
+            setupDeviceManager.unloadDevice(device)
         except Exception as e:
             print(f"Error al limpiar {device.name}: {e}")
     setupDevicesRegistry.clearRegistry()
@@ -164,7 +167,7 @@ def main():
             # Eliminar dispositivos que ya no están conectados
             cleanupDisconnectedDevices(devices)
             for device in devices:
-                setupDevice(device)
+                setupConnectedDevice(device)
             stop_event.wait(POLLING_INTERVAL)
     except KeyboardInterrupt:
         print("Deteniendo el script...")
