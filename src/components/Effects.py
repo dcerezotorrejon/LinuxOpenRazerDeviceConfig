@@ -7,13 +7,20 @@ def applyMatrixEffects(device: RazerDevice, config: DeviceConfig | None):
         if config is None:
             return
 
+        default_color = tuple(config.get("default_color", [255, 255, 255]))
+
         if device.capabilities.get('lighting_led_matrix') is not True:
+            print(f"El dispositivo {device.name} no tiene matriz de LEDs, aplicando efecto estático con el color por defecto.")
+            # Fallback para dispositivos (p. ej. algunos mouse) sin matriz expuesta.
+            if hasattr(device.fx, "static"):
+                device.fx.static(*default_color)
             return 
         
-        rows = device.fx.advanced.matrix._rows
-        cols = device.fx.advanced.matrix._cols
 
-        default_color = config.get("default_color", [0, 0, 0]);
+        rows = device.fx.advanced._matrix_dims[0]
+        cols = device.fx.advanced._matrix_dims[1]
+
+        default_color = config.get("default_color", [255, 255, 255])
         custom_keys = config.get("custom_keys", dict()) 
 
 
@@ -32,10 +39,8 @@ def applyMatrixEffects(device: RazerDevice, config: DeviceConfig | None):
 
 def cleanupEffects(device: RazerDevice):
     try:
-        if device.capabilities.get('lighting_led_matrix') is not True:
-            return 
-        
-        device.fx.none()
+        if hasattr(device.fx, "none"):
+            device.fx.none()
     except Exception as e:
         print(f"Error al limpiar efectos del dispositivo {device.name}")
         print(f"Detalles del error: \n {e}")
