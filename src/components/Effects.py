@@ -2,7 +2,7 @@ from openrazer.client.devices import RazerDevice
 
 from models.ConfigModels import DeviceConfig
 
-def applyMatrixEffects(device: RazerDevice, config: DeviceConfig | None):
+def apply_matrix_effects(device: RazerDevice, config: DeviceConfig | None):
     try:
         if config is None:
             return
@@ -37,7 +37,7 @@ def applyMatrixEffects(device: RazerDevice, config: DeviceConfig | None):
         print(f"Error al aplicar efectos al dispositivo {device.name}")
         print(f"Detalles del error: \n {e}")
 
-def cleanupEffects(device: RazerDevice):
+def cleanup_effects(device: RazerDevice):
     try:
         if hasattr(device.fx, "none"):
             device.fx.none()

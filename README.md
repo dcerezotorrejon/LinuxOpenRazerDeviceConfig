@@ -1,72 +1,88 @@
-# Razer Keyboard Configurator
+# Razer Device Configurator (Linux)
 
-This project is a tool for personalizing the lighting and configuration of Razer keyboards on Linux using the `openrazer` library. It allows you to define custom colors for specific keys and adjust the overall brightness via a JSON configuration file.
+Tool for customizing Razer device lighting on Linux using OpenRazer.
+It currently supports both keyboard and mouse configuration through JSON.
 
 ## Features
 
-- **Per-Key Configuration:** Define specific colors for each key using matrix coordinates.
-- **Brightness Control:** Adjust the global brightness level of the device.
-- **Automatic Detection:** The script constantly monitors for new compatible devices to apply configurations automatically.
-- **JSON-Based:** Easy to edit and customize without touching the source code.
-
-## How it Works (Project Logic)
-
-The application follows a modular workflow to manage hardware settings:
-
-1.  **Device Polling (`Script.py`):** The main script runs an infinite loop that checks for connected Razer devices. It uses a set of PIDs to keep track of which devices have already been configured, ensuring settings are only applied once per connection.
-2.  **Dynamic Loading:** The configuration logic is decoupled from the main loop. `Script.py` dynamically imports `KeyboardSetup.py`, allowing the detection engine to stay clean and focused.
-3.  **Matrix Mapping:** Razer keyboards are treated as a grid (rows and columns). The logic iterates through this matrix and performs a lookup in `KeyboardConfig.json`:
-    *   If coordinates match a entry in the JSON, that specific RGB color is applied.
-    *   Otherwise, it applies the defined `default_color`.
-4.  **Hardware Sync:** Once the matrix is prepared in memory, a single `draw()` command is sent to the hardware, making the update instantaneous and flickering-free.
+- Automatic detection of compatible devices (`keyboard` and `mouse`).
+- Brightness configuration per device type.
+- Matrix-based mapping for keyboards using `custom_keys` (`row -> column -> color`).
+- Static color fallback for devices without exposed LED matrix support.
+- System signal handling (SIGINT/SIGTERM) and resume handling through DBus.
 
 ## Requirements
 
-- **Operating System:** Linux.
-- **Drivers:** [OpenRazer](https://openrazer.github.io/) installed and the daemon (`openrazer-daemon`) running.
-- **Python:** Version 3.x.
-- **Python Dependencies:** `openrazer-client`.
+- Linux.
+- [OpenRazer](https://openrazer.github.io/) installed and `openrazer-daemon` running.
+- Python 3.
+- Python dependencies:
 
-## Installation
+```bash
+pip install openrazer-client dbus-python pygobject
+```
 
-1. Clone this repository or download the files.
-2. Ensure `openrazer` is installed and your user belongs to the `plugdev` group.
-3. Install the required Python library:
-   ```bash
-   pip install openrazer-client
-   ```
+Note: `dbus-python` and `pygobject` may also be installed from system packages depending on your distro.
+
+## Run
+
+From the project root:
+
+```bash
+python3 src/Script.py
+```
 
 ## Configuration
 
-The `KeyboardConfig.json` file controls the lighting behavior:
+The configuration file is `config/UserConfig.json`.
 
-- `brightness`: Brightness level (0-100).
-- `default_color`: Default color in RGB format `[R, G, B]`.
-- `custom_keys`: A nested map (`Row -> Column -> Config`) defining colors for specific keys.
+Per-device keys:
 
-Example `KeyboardConfig.json`:
+- `brightness`: brightness level (0-100).
+- `default_color`: default RGB color `[R, G, B]`.
+- `custom_keys`: matrix coordinate map (`row -> column -> {color, key}`).
+
+Minimum example:
+
 ```json
 {
-    "brightness": 40,
-    "default_color": [255, 255, 255],
-    "custom_keys": {
-        "0": {
-            "0": {"color": [255, 0, 0], "key": "ESC"}
+    "keyboard": {
+        "brightness": 60,
+        "default_color": [255, 255, 255],
+        "custom_keys": {
+            "0": {
+                "0": {"color": [255, 0, 0], "key": "ESC"}
+            }
         }
+    },
+    "mouse": {
+        "brightness": 100,
+        "default_color": [255, 255, 255],
+        "custom_keys": {}
     }
 }
 ```
 
-## Usage
+## Workflow
 
-To start the configurator:
+1. `src/Script.py` periodically polls OpenRazer devices.
+2. It tracks already configured devices to avoid reapplying settings every cycle.
+3. `src/components/SetupDevice.py` (`SetupDeviceManager`) applies brightness and effects.
+4. `src/components/Effects.py` applies matrix effects when available, or static fallback otherwise.
+5. On disconnect/resume events, it cleans up state and may restart `openrazer-daemon`.
 
-```bash
-python3 Script.py
-```
+## Current Structure
 
-## Project Structure
+- `src/Script.py`: main loop, detection, signals, and DBus handling.
+- `src/components/DeviceRegistry.py`: registry of configured devices.
+- `src/components/SetupDevice.py`: per-device setup manager.
+- `src/components/Effects.py`: lighting logic (matrix/static).
+- `src/components/UserConfigRetriever.py`: loads `config/UserConfig.json`.
+- `src/models/ConfigModels.py`: typed config models.
+- `config/UserConfig.json`: user configuration.
 
-- `Script.py`: Main entry point that manages device polling and lifecycle.
-- `KeyboardSetup.py`: Bridge logic that maps JSON data to the OpenRazer matrix.
-- `KeyboardConfig.json`: User-defined settings for colors and brightness.
+## Known Limitations
+
+- Some mouse models expose LED zones differently depending on firmware/driver.
+- Matrix support relies on advanced OpenRazer properties that may vary across versions.
+- If you edit `UserConfig.json` while the script is running, you may need to restart the script to fully reapply changes.

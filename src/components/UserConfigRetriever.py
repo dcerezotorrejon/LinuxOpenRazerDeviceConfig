@@ -11,7 +11,7 @@ CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "UserConfig.json"
 
 
 
-def getUserConfig(config_path: str | os.PathLike[str] = CONFIG_PATH, force_reload: bool = False) -> UserConfig | None:
+def get_user_config(config_path: str | os.PathLike[str] = CONFIG_PATH, force_reload: bool = False) -> UserConfig | None:
     """Carga el archivo JSON de configuración."""
     config_path = Path(os.path.expanduser(str(config_path)))
     try:

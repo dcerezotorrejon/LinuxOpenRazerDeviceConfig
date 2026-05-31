@@ -6,18 +6,19 @@ class DeviceRegistry:
     def __init__(self):
         self.devices = dict[str, RazerDevice]()
     
-    def addDevice(self, device: RazerDevice):
+    def add_device(self, device: RazerDevice):
         self.devices[device.name] = device
 
-    def isDeviceRegistered(self, device: RazerDevice):
+    def is_device_registered(self, device: RazerDevice):
         return device.name in self.devices 
     
-    def clearRegistry(self):
+    def clear_registry(self):
         self.devices.clear()
-    def getRegisteredDevices(self):
+
+    def get_registered_devices(self):
         return list(self.devices.values())
 
-    def compareWithDevicesList(self, devices: list[RazerDevice]):
+    def compare_with_devices_list(self, devices: list[RazerDevice]):
         added: list[RazerDevice] = []
         removed: list[RazerDevice] = []
 
