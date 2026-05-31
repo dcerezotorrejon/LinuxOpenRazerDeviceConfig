@@ -12,7 +12,7 @@ CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "UserConfig.json"
 
 _CONFIG_CACHE: UserConfig | None = None
 
-def get_user_config(config_path: str | os.PathLike[str] = CONFIG_PATH, force_reload: bool = False) -> UserConfig | None:
+def getUserConfig(config_path: str | os.PathLike[str] = CONFIG_PATH, force_reload: bool = False) -> UserConfig | None:
     """Carga el archivo JSON de configuración."""
     global _CONFIG_CACHE
     if not force_reload and _CONFIG_CACHE is not None:

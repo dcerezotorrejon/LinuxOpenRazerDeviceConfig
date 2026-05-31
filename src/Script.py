@@ -64,7 +64,7 @@ def pollDevices():
         print(f"Error al obtener dispositivos: {e}")
         return []
 
-def cleanupDevices(devices: list[RazerDevice]):
+def cleanupDisconnectedDevices(devices: list[RazerDevice]):
     cleaned = False
 
     for pid in list(setupDevices):
@@ -76,8 +76,7 @@ def cleanupDevices(devices: list[RazerDevice]):
            
     
     if cleaned:
-        print('Reiniciando openrazer daemon para refrescar la lista de dispositivos...')
-        subprocess.run(['systemctl', '--user', 'restart', 'openrazer-daemon'], check=True)
+        reloadOpenRazerDaemon()  # Reiniciar el daemon para asegurarnos de que se liberen los recursos del dispositivo desconectado
         stop_event.wait(2)  # Detener el script para reiniciarlo manualmente después de limpiar los dispositivos
         cleaned = False
 
@@ -91,34 +90,36 @@ def setupDevice(device: RazerDevice):
     setupDevices[device._pid] = device
     return
     
+def clearDevices():
+    for pid in list(setupDevices.keys()):
+        device = setupDevices.pop(pid)
+        try:
+            unload_device(device)
+        except Exception as e:
+            print(f"Error al limpiar {device.name}: {e}")
+def reloadOpenRazerDaemon():
+    print("Reiniciando openrazer daemon...")
+    try:
+        subprocess.run(['systemctl', '--user', 'restart', 'openrazer-daemon'], check=True)
+        print("OpenRazer daemon reiniciado correctamente.")
+    except Exception as e:
+        print(f"Error al reiniciar openrazer-daemon: {e}")
 
 def handleStopSignal(signum, frame):
     signal_name = signal.Signals(signum).name
     print(f"Recibida señal {signal_name}. Deteniendo el script...")
-    for device in setupDevices.values():
-        try:
-            unload_device(device)
-        except Exception as e:
-            print(f"Error al limpiar efectos del dispositivo {device.name} durante la detención: {e}")
+    clearDevices()
     stop_event.set()
 
 
 def handleSleepSignal(sleeping: bool):
     """Maneja la señal de suspensión/reanudación del sistema."""
-    if sleeping:
-        print("Sistema entrando en suspensión. Limpiando dispositivos...")
-        for pid in list(setupDevices.keys()):
-            device = setupDevices.pop(pid)
-            try:
-                unload_device(device)
-                stop_event.wait(10)
-            except Exception as e:
-                print(f"Error al limpiar {device.name} antes de suspensión: {e}")
-    else:
+    if not sleeping:
         print("Sistema reanudado. Forzando limpieza y reconfiguración...")
         try:
+            clearDevices()  # Limpiar cualquier dispositivo que pueda haber quedado en un estado inconsistente
             # El daemon de OpenRazer a veces pierde los dispositivos tras suspender
-            subprocess.run(['systemctl', '--user', 'restart', 'openrazer-daemon'], check=True)
+            reloadOpenRazerDaemon()
             print("OpenRazer daemon reiniciado tras reanudación.")
             stop_event.wait(2)# Esperar un momento para que el daemon se reinicie completamente
         except Exception as e:
@@ -138,11 +139,11 @@ def initSleepListener():
             bus_name="org.freedesktop.login1"
         )
         
-        def run_loop():
+        def runLoop():
             loop = GLib.MainLoop()
             loop.run()
         
-        thread = threading.Thread(target=run_loop, daemon=True)
+        thread = threading.Thread(target=runLoop, daemon=True)
         thread.start()
         print("Listener de suspensión (DBus) iniciado correctamente.")
     except Exception as e:
@@ -161,7 +162,7 @@ def main():
         while not stop_event.is_set():
             devices = pollDevices()
             # Eliminar dispositivos que ya no están conectados
-            cleanupDevices(devices)
+            cleanupDisconnectedDevices(devices)
             for device in devices:
                 setupDevice(device)
             stop_event.wait(POLLING_INTERVAL)
