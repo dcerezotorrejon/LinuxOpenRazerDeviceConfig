@@ -68,8 +68,8 @@ def pollDevices():
 def cleanupDisconnectedDevices(devices: list[RazerDevice]):
     cleaned = False
 
-    setupDevicesRegistry.compareWithDevicesList(devices)
-    if len(setupDevicesRegistry.compareWithDevicesList(devices)["removed"]) > 0:
+    comparation = setupDevicesRegistry.compareWithDevicesList(devices)
+    if len(comparation["removed"]) > 0:
         setupDevicesRegistry.clearRegistry()  # Limpiar el registro de dispositivos configurados
         cleaned = True
            
