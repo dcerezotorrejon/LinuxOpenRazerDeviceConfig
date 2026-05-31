@@ -10,6 +10,7 @@ It currently supports both keyboard and mouse configuration through JSON.
 - Matrix-based mapping for keyboards using `custom_keys` (`row -> column -> color`).
 - Static color fallback for devices without exposed LED matrix support.
 - System signal handling (SIGINT/SIGTERM) and resume handling through DBus.
+- Runtime architecture organized around classes and dedicated components.
 
 ## Requirements
 
@@ -65,24 +66,37 @@ Minimum example:
 
 ## Workflow
 
-1. `src/Script.py` periodically polls OpenRazer devices.
-2. It tracks already configured devices to avoid reapplying settings every cycle.
-3. `src/components/SetupDevice.py` (`SetupDeviceManager`) applies brightness and effects.
-4. `src/components/Effects.py` applies matrix effects when available, or static fallback otherwise.
-5. On disconnect/resume events, it cleans up state and may restart `openrazer-daemon`.
+1. `src/Script.py` creates a `RazerScriptOrchestrator` instance and starts the runtime loop.
+2. `src/components/DevicePoller.py` periodically polls OpenRazer devices and filters usable ones.
+3. `src/components/DeviceRegistry.py` tracks already configured devices to avoid reapplying settings every cycle.
+4. `src/components/SetupDevice.py` (`SetupDeviceManager`) applies brightness and delegates effects to `EffectsManager`.
+5. `src/components/SystemEvents.py` handles OS signals and DBus resume events.
+6. On disconnect/resume events, the orchestrator cleans up state and may restart `openrazer-daemon`.
 
 ## Current Structure
 
-- `src/Script.py`: main loop, detection, signals, and DBus handling.
+- `src/Script.py`: bootstrap and `RazerScriptOrchestrator` lifecycle.
+- `src/components/DevicePoller.py`: OpenRazer polling and device usability checks.
 - `src/components/DeviceRegistry.py`: registry of configured devices.
 - `src/components/SetupDevice.py`: per-device setup manager.
-- `src/components/Effects.py`: lighting logic (matrix/static).
-- `src/components/UserConfigRetriever.py`: loads `config/UserConfig.json`.
+- `src/components/Effects.py`: `EffectsManager` for matrix/static lighting logic.
+- `src/components/SystemEvents.py`: signal registration and DBus sleep/resume listener.
+- `src/components/UserConfigRetriever.py`: `ConfigLoader` for loading `config/UserConfig.json`.
 - `src/models/ConfigModels.py`: typed config models.
 - `config/UserConfig.json`: user configuration.
+
+## Runtime Design
+
+- `RazerScriptOrchestrator` owns the runtime state and coordinates polling, setup, cleanup, and shutdown.
+- `DevicePoller` isolates OpenRazer device discovery from the main loop.
+- `SetupDeviceManager` focuses on device configuration only.
+- `EffectsManager` encapsulates LED matrix and static fallback behavior.
+- `SystemSignalHandler` and `SystemSleepListener` isolate OS integration concerns.
+- `ConfigLoader` centralizes configuration loading.
 
 ## Known Limitations
 
 - Some mouse models expose LED zones differently depending on firmware/driver.
 - Matrix support relies on advanced OpenRazer properties that may vary across versions.
 - If you edit `UserConfig.json` while the script is running, you may need to restart the script to fully reapply changes.
+- Device tracking still uses the device name as registry key, so USB/wireless transitions may need further hardening depending on the model.
