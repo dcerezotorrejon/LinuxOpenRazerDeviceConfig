@@ -6,6 +6,10 @@ from src.components.Effects import applyMatrixEffects, cleanupEffects
 
 
 class SetupDeviceManager:
+    user_config: UserConfig | None
+    def __init__(self):
+        self.user_config = getUserConfig()
+
     def applyBaseSettings(self, device: RazerDevice, config: DeviceConfig | None):
         if config is not None:
             device.brightness = config.get("brightness", 100)
@@ -16,7 +20,7 @@ class SetupDeviceManager:
 
     def setupDevice(self, device: RazerDevice):
         print(f"Configurando dispositivo {device.name} con PID {device._pid}...")
-        user_config: UserConfig | None = getUserConfig()
+        user_config: UserConfig | None = self.user_config
         if user_config is None:
             print(f"No se pudo cargar la configuración para {device.name} con PID {device._pid}")
             return
