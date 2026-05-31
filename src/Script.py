@@ -20,6 +20,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from components.DeviceRegistry import DeviceRegistry
 from src.components.SetupDevice import setup_device, unload_device
 
 
@@ -31,7 +32,7 @@ ALLOWED_DEVICE_TYPES = set(['keyboard', 'mouse'])  # Tipos de dispositivos a con
 
 #Variables comunes
 
-setupDevices = dict[str, RazerDevice]()
+setupDevicesRegistry = DeviceRegistry()
 stop_event = threading.Event()
 
 
@@ -67,36 +68,35 @@ def pollDevices():
 def cleanupDisconnectedDevices(devices: list[RazerDevice]):
     cleaned = False
 
-    for pid in list(setupDevices):
-        if pid not in [d._pid for d in devices]:
-            print(f"El dispositivo con PID {pid} ya no está conectado, eliminando de la configuración...")
-            del setupDevices[pid]  # Eliminar el dispositivo de la lista de configurados
-            cleaned = True
-            break  # Salir del bucle después de limpiar, no es necesario seguir verificando
+    setupDevicesRegistry.compareWithDevicesList(devices)
+    if len(setupDevicesRegistry.compareWithDevicesList(devices)["removed"]) > 0:
+        setupDevicesRegistry.clearRegistry()  # Limpiar el registro de dispositivos configurados
+        cleaned = True
            
     
     if cleaned:
         reloadOpenRazerDaemon()  # Reiniciar el daemon para asegurarnos de que se liberen los recursos del dispositivo desconectado
-        stop_event.wait(2)  # Detener el script para reiniciarlo manualmente después de limpiar los dispositivos
+        stop_event.wait(3)  # Detener el script para reiniciarlo manualmente después de limpiar los dispositivos
         cleaned = False
 
 
 def setupDevice(device: RazerDevice):
-    if device._pid in setupDevices:
+    if setupDevicesRegistry.isDeviceRegistered(device):
         #print(f"El dispositivo {device.name} con PID {device._pid} ya está configurado, omitiendo...")
         return
     print(f"Configurando dispositivo {device.name} con PID {device._pid}...")
     setup_device(device)   
-    setupDevices[device._pid] = device
+    setupDevicesRegistry.addDevice(device)
     return
     
 def clearDevices():
-    for pid in list(setupDevices.keys()):
-        device = setupDevices.pop(pid)
+    for device in setupDevicesRegistry.getRegisteredDevices():
         try:
             unload_device(device)
         except Exception as e:
             print(f"Error al limpiar {device.name}: {e}")
+    setupDevicesRegistry.clearRegistry()
+
 def reloadOpenRazerDaemon():
     print("Reiniciando openrazer daemon...")
     try:
@@ -124,7 +124,7 @@ def handleSleepSignal(sleeping: bool):
             stop_event.wait(2)# Esperar un momento para que el daemon se reinicie completamente
         except Exception as e:
             print(f"Error al reiniciar openrazer-daemon tras reanudación: {e}")
-        setupDevices.clear()
+        setupDevicesRegistry.clearRegistry()
 
 
 def initSleepListener():
