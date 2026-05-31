@@ -151,6 +151,16 @@ def init_sleep_listener():
     except Exception as e:
         print(f"Advertencia: No se pudo configurar el listener de suspensión. {e}")
 
+def handleStopSignal(signum, frame):
+    signal_name = signal.Signals(signum).name
+    print(f"Recibida señal {signal_name}. Deteniendo el script...")
+    for device in setupDevices.values():
+        try:
+            unload_device(device)
+        except Exception as e:
+            print(f"Error al limpiar efectos del dispositivo {device.name} durante la detención: {e}")
+    stop_event.set()
+
 
 def main():
     signal.signal(signal.SIGINT, handle_stop_signal)
