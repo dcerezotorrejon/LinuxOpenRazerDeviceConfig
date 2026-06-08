@@ -19,8 +19,8 @@ class EffectsManager:
                     device.fx.static(*default_color)
                 return
 
-            rows = device.fx.advanced._matrix_dims[0]
-            cols = device.fx.advanced._matrix_dims[1]
+            rows = device.fx.advanced.rows
+            cols = device.fx.advanced.cols
 
             default_color = config.get("default_color", [255, 255, 255])
             custom_keys = config.get("custom_keys", dict())
