@@ -7,6 +7,7 @@ class EffectsManager:
         try:
             if config is None:
                 return
+            device.fx.none()
 
             default_color = tuple(config.get("default_color", [255, 255, 255]))
 
@@ -22,14 +23,14 @@ class EffectsManager:
             rows = device.fx.advanced.rows
             cols = device.fx.advanced.cols
 
-            default_color = config.get("default_color", [255, 255, 255])
+            default_color = tuple(config.get("default_color", [255, 255, 255]))
             custom_keys = config.get("custom_keys", dict())
 
             for r in range(rows):
                 for c in range(cols):
                     custom_config = custom_keys.get(str(r), {}).get(str(c), None)
-                    current_color = custom_config["color"] if custom_config is not None else default_color
-                    device.fx.advanced.matrix.set(r, c, tuple(current_color))
+                    current_color = tuple(custom_config["color"]) if custom_config is not None else default_color
+                    device.fx.advanced.matrix.set(r, c, current_color)
 
             device.fx.advanced.draw()
         except Exception as e:
