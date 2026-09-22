@@ -5,9 +5,10 @@ from openrazer.client.devices import RazerDevice
 class DevicePoller:
     def __init__(self, allowed_types: set[str]):
         self.allowed_types = allowed_types
-
+    
     def is_device_usable(self, device: RazerDevice) -> bool:
         """Verifica si el dispositivo esta realmente disponible antes de usar."""
+        print(f"Verificando dispositivo {device.serial}")
         try:
             firmware_version = device.firmware_version
             return "v0.0" not in firmware_version

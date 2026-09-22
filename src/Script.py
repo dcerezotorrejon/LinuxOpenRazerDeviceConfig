@@ -30,19 +30,13 @@ class RazerScriptOrchestrator:
 
         user_config = ConfigLoader().load()
         self.registry = DeviceRegistry()
+        self.stop_event.wait(10)
         self.device_manager = SetupDeviceManager(user_config=user_config)
         self.device_poller = DevicePoller(allowed_types=ALLOWED_DEVICE_TYPES)
 
         self.signal_handler = SystemSignalHandler(on_stop=self.handle_stop_signal)
         self.sleep_listener = SystemSleepListener(on_sleep_event=self.handle_sleep_signal)
 
-    def reload_open_razer_daemon(self) -> None:
-        print("Reiniciando openrazer daemon...")
-        try:
-            subprocess.run(["systemctl", "--user", "restart", "openrazer-daemon"], check=True)
-            print("OpenRazer daemon reiniciado correctamente.")
-        except Exception as e:
-            print(f"Error al reiniciar openrazer-daemon: {e}")
 
     def setup_connected_device(self, device: RazerDevice) -> None:
         if self.registry.is_device_registered(device):
@@ -67,8 +61,6 @@ class RazerScriptOrchestrator:
             return
 
         self.registry.clear_registry()
-        # Requerido para detectar cambios por alternancia Wireless/USB.
-        self.reload_open_razer_daemon()
         self.stop_event.wait(3)
 
     def handle_stop_signal(self, signum: int, frame: object) -> None:
@@ -86,7 +78,6 @@ class RazerScriptOrchestrator:
         try:
             # Limpiar dispositivos que pueden quedar en estado inconsistente.
             self.clear_devices()
-            self.reload_open_razer_daemon()
             print("OpenRazer daemon reiniciado tras reanudación.")
         except Exception as e:
             print(f"Error al reiniciar openrazer-daemon tras reanudación: {e}")
