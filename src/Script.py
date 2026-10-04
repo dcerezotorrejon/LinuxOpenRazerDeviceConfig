@@ -18,7 +18,7 @@ from src.components.SystemEvents import SystemSignalHandler, SystemSleepListener
 from src.components.SetupDevice import SetupDeviceManager
 from src.components.UserConfigRetriever import ConfigLoader
 
-
+INITIAL_DELAY = 5  # Tiempo inicial de espera antes de comenzar la configuración (en segundos)
 POLLING_INTERVAL = 3  # Intervalo de tiempo para hacer pooling de dispositivos (en segundos)
 ALLOWED_DEVICE_TYPES = {"keyboard", "mouse"}  # Tipos de dispositivos a configurar
 
@@ -30,7 +30,7 @@ class RazerScriptOrchestrator:
 
         user_config = ConfigLoader().load()
         self.registry = DeviceRegistry()
-        self.stop_event.wait(10)
+        self.stop_event.wait(INITIAL_DELAY)
         self.device_manager = SetupDeviceManager(user_config=user_config)
         self.device_poller = DevicePoller(allowed_types=ALLOWED_DEVICE_TYPES)
 
@@ -60,8 +60,14 @@ class RazerScriptOrchestrator:
         if len(comparison["removed"]) == 0:
             return
 
-        self.registry.clear_registry()
-        self.stop_event.wait(3)
+        for device in comparison["removed"]:
+            try:
+                self.device_manager.unload_device(device)
+                self.registry.remove_device(device)
+            except Exception as e:
+                print(f"Error al limpiar dispositivo desconectado {device.name}: {e}")
+        
+        print(f"Limpiados {len(comparison['removed'])} dispositivo(s) desconectado(s).")
 
     def handle_stop_signal(self, signum: int, frame: object) -> None:
         signal_name = signal.Signals(signum).name
